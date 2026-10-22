@@ -9,7 +9,7 @@ dependencyResolutionManagement {
     // The platform versions the loaders are compiled against are the main build's.
     versionCatalogs {
         create("libs") {
-            from(files("../gradle/libs.versions.toml"))
+            from(files("../libs.versions.toml"))
         }
     }
 }

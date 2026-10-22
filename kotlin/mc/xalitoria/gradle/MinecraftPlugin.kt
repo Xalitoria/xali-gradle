@@ -3,8 +3,6 @@ package mc.xalitoria.gradle
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.artifacts.ResolvedDependency
-import org.gradle.api.specs.Spec
 
 /**
  * Describes a Paper or Velocity plugin and gets its libraries to the server. It adds two blocks, `paper { }` and
@@ -70,7 +68,7 @@ class MinecraftPlugin : Plugin<Project> {
             val closure = libraries.closure
             project.tasks.withType(ShadowJar::class.java).configureEach { shadow ->
                 shadow.dependencies { filter ->
-                    filter.exclude(Spec<ResolvedDependency> { "${it.moduleGroup}:${it.moduleName}" in closure.get() })
+                    filter.exclude { "${it.moduleGroup}:${it.moduleName}" in closure.get() }
                 }
             }
         }

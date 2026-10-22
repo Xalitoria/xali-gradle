@@ -32,7 +32,7 @@ abstract class WriteFile : DefaultTask() {
 /**
  * Writes the loader classes into the plugin under their own names. The loaders are compiled once, in this plugin, and
  * what this does is rename each class (and every reference to it) to the name the plugin chose, so each plugin gets
- * its own copy in its own package and nothing it ships depends on this plugin.
+ * its own copy in its own package, and nothing it ships depends on this plugin.
  */
 abstract class GenerateLoaderClasses : DefaultTask() {
     /** Template class (a name in `mc.xalitoria.gradle.loader`) to the fully qualified name its copy gets. */

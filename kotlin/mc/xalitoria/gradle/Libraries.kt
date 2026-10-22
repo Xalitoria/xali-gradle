@@ -59,11 +59,11 @@ internal fun libraries(bundle: Bundle): Libraries? {
     return Libraries(
         repositories = repositories(project, centralProxy),
         direct = configuration.incoming.resolutionResult.rootComponent.map { root ->
-            root.dependencies.filterIsInstance<ResolvedDependencyResult>()
+            root.dependencies.asSequence().filterIsInstance<ResolvedDependencyResult>()
                 .mapNotNull { it.selected.moduleVersion }
                 .filter { module -> exclude.none { matches(it, module.group, module.name) } }
                 .map { "${it.group}:${it.name}:${it.version}" }
-                .distinct().sorted()
+                .distinct().sorted().toList()
         },
         resolved = artifacts.map { set ->
             set.mapNotNull { artifact ->
