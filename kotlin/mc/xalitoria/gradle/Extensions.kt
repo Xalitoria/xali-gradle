@@ -96,9 +96,18 @@ abstract class PlatformExtension {
     fun loader(block: LoaderOptions.() -> Unit) {
         loader.apply(block)
     }
+
+    /** The dev server the plugin is installed on and run with. */
+    abstract val server: ServerOptions
+
+    fun server(block: ServerOptions.() -> Unit) {
+        server.apply(block)
+    }
 }
 
 open class PaperExtension : PlatformExtension() {
+    override val server = ServerOptions(Software.PAPER)
+
     /** The Minecraft version it was written for. */
     var apiVersion: String? = null
     var prefix: String? = null
@@ -121,6 +130,8 @@ open class PaperExtension : PlatformExtension() {
 }
 
 open class VelocityExtension : PlatformExtension() {
+    override val server = ServerOptions(Software.VELOCITY)
+
     /** Lowercase letters, digits, `-` and `_`; by default the name in that form. */
     var id: String? = null
     var url: String? = null

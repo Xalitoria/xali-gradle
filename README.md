@@ -148,3 +148,39 @@ paper {
   Since the plugin is only created after the libraries are in, the Kotlin standard library can be one of them.
 
 The loaders target Java 25, as Paper 26 and Velocity 4 do.
+
+## The dev server
+
+Every platform in use also gets the tasks to test the plugin on a server: the jar the project builds (`shadowJar` if the
+shadow plugin is applied, else `jar`) is installed into the server's `plugins`, and the server is started.
+
+| Task | What it does |
+|---|---|
+| `downloadServer` | Fetches the pinned server build into the server's folder. Skipped when it is already there; verified by its SHA-256. |
+| `downloadServerPlugins` | Fetches the plugins listed in `server { }` into `plugins`. |
+| `installPlugin` | Copies the jar into `plugins`, replacing earlier builds of the same plugin (written under a temp name and moved into place, so a server that is still running keeps reading the old file). |
+| `runServer` / `runProxy` | Runs all of the above, then starts a Paper or Folia server (`runServer`) or a Velocity proxy (`runProxy`) from that folder. |
+
+A project that hosts several plugins (both blocks in one project, or a multiplatform project) has the platform in the
+names: `installPaperPlugin`, `runVelocityProxy`.
+
+```kotlin
+paper {
+    server {
+        directory = "run"                   // default: `run` in the project that builds the plugin; anything file(...) accepts
+        software = Software.FOLIA           // PAPER (default), FOLIA; Velocity's block is always VELOCITY
+        memory = "2G"                       // default 2G, 512M for Velocity
+        hotSwap = true                      // JetBrains Runtime with enhanced class redefinition + a debug port; never for Velocity
+        debugPort = 5005
+        javaVersion = 25
+        arguments = listOf("--nogui")
+        acceptEula = true                   // writes eula.txt
+        plugin("PlaceholderAPI.jar", "https://...")   // fetched into plugins by downloadServerPlugins
+    }
+}
+```
+
+The server build is pinned by checksum. To run another one, give all of `version`, `build` and `sha256` (the download is
+`fill-data.papermc.io/v1/objects/<sha256>/<software>-<version>-<build>.jar`). Projects that point `directory` at the same
+folder share the server: each installs its own jar there, and whatever was installed before stays. Plugins that can't be
+downloaded without an account are put in `plugins` by hand.

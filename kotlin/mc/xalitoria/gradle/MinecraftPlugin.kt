@@ -23,10 +23,14 @@ class MinecraftPlugin : Plugin<Project> {
         project.childProjects.values.filter { child -> Kind.entries.any { it.dir == child.name } }
             .forEach { it.pluginManager.apply(MinecraftPlugin::class.java) }
 
-        project.afterEvaluate { bundles(project).forEach { configure(it) } }
+        project.afterEvaluate {
+            val bundles = bundles(project)
+            val plain = bundles.sumOf { it.kinds.size } == 1
+            bundles.forEach { configure(it, plain) }
+        }
     }
 
-    private fun configure(bundle: Bundle) {
+    private fun configure(bundle: Bundle, plain: Boolean) {
         val project = bundle.project
         val prefix = bundle.key.replaceFirstChar(Char::uppercase)
 
@@ -95,6 +99,7 @@ class MinecraftPlugin : Plugin<Project> {
                 it.outputDirectory.set(project.layout.buildDirectory.dir("generated/xali/${kind.dir}-descriptor"))
             }
             bundle.layout.addResources(task.flatMap { it.outputDirectory })
+            registerServerTasks(bundle, kind, extension.server, plain)
         }
     }
 
