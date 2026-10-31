@@ -7,12 +7,14 @@ import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
+import org.gradle.work.DisableCachingByDefault
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.commons.ClassRemapper
 import org.objectweb.asm.commons.SimpleRemapper
 
 /** Writes [content] to [fileName] in [outputDirectory]: a plugin descriptor or `loader.json`. */
+@DisableCachingByDefault(because = "Writes one small file, which is quicker than a cache lookup")
 abstract class WriteFile : DefaultTask() {
     @get:Input
     abstract val fileName: Property<String>
@@ -34,6 +36,7 @@ abstract class WriteFile : DefaultTask() {
  * what this does is rename each class (and every reference to it) to the name the plugin chose, so each plugin gets
  * its own copy in its own package, and nothing it ships depends on this plugin.
  */
+@DisableCachingByDefault(because = "Copies two small precompiled classes under new names, which is quicker than a cache lookup")
 abstract class GenerateLoaderClasses : DefaultTask() {
     /** Template class (a name in `mc.xalitoria.gradle.loader`) to the fully qualified name its copy gets. */
     @get:Input

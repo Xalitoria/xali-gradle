@@ -67,6 +67,20 @@ class Conventions : Plugin<Project> {
         project.afterEvaluate {
             name(project)
             publish(project)
+            kotlinVersion(project)
+        }
+    }
+
+    /**
+     * Every repository names the Kotlin plugin version in `kotlin.version` of its `gradle.properties` (settings cannot read
+     * the catalog), and the catalog names the one the libraries are built with. A difference is a mistake: say so.
+     */
+    private fun kotlinVersion(project: Project) {
+        val declared = project.findProperty("kotlin.version") as? String ?: return
+        val catalog = project.extensions.findByType(VersionCatalogsExtension::class.java)?.find("libs")
+            ?.flatMap { it.findVersion("kotlin") }?.map { it.requiredVersion }?.orElse(null) ?: return
+        if (declared != catalog) {
+            throw GradleException("kotlin.version is $declared in gradle.properties but the catalog's kotlin is $catalog; make them equal.")
         }
     }
 
