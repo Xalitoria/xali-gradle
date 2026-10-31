@@ -1,21 +1,37 @@
 # xali-gradle
 
-**`mc.xalitoria.minecraft`** is a Gradle plugin that describes a Paper or Velocity plugin and gets its libraries to the
-server. It covers what plugin-yml did for the descriptors, adds a loader for the libraries on both platforms and adds
-tasks to run the plugin on a dev server. Only Paper and Velocity are supported, and its DSL is plain Kotlin.
+**xali-gradle** is the build logic of the Xali repositories: two Gradle plugins and the version catalog they share.
+
+- **`mc.xalitoria.minecraft`** describes a Paper or Velocity plugin and gets its libraries to the server. It covers what
+  plugin-yml did for the descriptors, adds a loader for the libraries on both platforms and adds tasks to run the plugin on
+  a dev server. Only Paper and Velocity are supported, and its DSL is plain Kotlin.
+- **`mc.xalitoria.conventions`** is the build setup every module shares: repositories, Kotlin and Java, the source layout,
+  and the names of the jars, see [The conventions plugin](#the-conventions-plugin).
+- **The version catalog**, `libs.versions.toml`, names every dependency and plugin version once. It is published as
+  `mc.xalitoria:xali-catalog`, and the workspace reads the file itself.
 
 ## Installation
 
-The plugin is a separate Gradle build in this folder. The main build includes it through
-`pluginManagement { includeBuild("xali-gradle") }` in `settings.gradle.kts`, so it is built before any module uses it.
+This is a separate Gradle build. The workspace includes it through `pluginManagement { includeBuild("xali-gradle") }` in
+its `settings.gradle.kts`, so it is built before any module uses it. A module repository on its own reads it from the
+local Maven repository instead:
 
-Declare it once in the root build script, so every module shares one copy:
+```console
+user $ ./gradlew publishToMavenLocal
+```
+
+This publishes the plugins (`mc.xalitoria.minecraft` and `mc.xalitoria.conventions`, with their markers) and
+`mc.xalitoria:xali-catalog` to the local Maven repository (`~/.m2`, or the `localRepository` of `~/.m2/settings.xml`).
+Nothing is published to a remote repository.
+
+In the workspace, declare the plugins once in the root build script, so every module shares one copy:
 
 **File** `build.gradle.kts`
 
 ```kotlin
 plugins {
     id("mc.xalitoria.minecraft") apply false
+    id("mc.xalitoria.conventions") apply false
 }
 ```
 
@@ -31,6 +47,54 @@ plugins {
 ```
 
 ## Configuration
+
+### The conventions plugin
+
+A module applies `mc.xalitoria.conventions` in its build script, as the first plugin after Kotlin. It applies itself to the
+module and every project below it, so the same script works in the workspace and in the module's own repository.
+
+**File** `util/build.gradle.kts`
+
+```kotlin
+plugins {
+    kotlin("jvm")                          // kotlin("multiplatform") for vote, before the conventions
+    id("mc.xalitoria.conventions")
+}
+```
+
+It sets up:
+
+- the repositories (Maven Central and the Xali, Paper, CodeMC, JitPack and HelpChat ones, with the local Maven repository first);
+- Kotlin on Java 25 (a module that needs less sets its own toolchain after this), the opt-ins, and the language previews
+  every module is written against (collection literals, name-based destructuring and context-sensitive resolution, see the
+  [root README](../README.md#compiler-options));
+- the source layout: `kotlin/`, `java/`, `resources/`, `test/` and `test-resources/`, in place of `src/main/...`;
+- the [jar names](#jar-names), and a check that no two jars of one build get the same file name;
+- a default Maven publication of the main jar for a project that applies `maven-publish` and defines none of its own;
+- a check that `kotlin.version` in `gradle.properties` equals `kotlin` in the catalog.
+
+A Kotlin Multiplatform project keeps its own targets and source sets: apply the multiplatform plugin before the conventions.
+With `xali.workspace=true` in the root's `gradle.properties` the modules are the top-level projects of one build and their
+jars go to the root's `build/libs/<module>/`. Without it, the root project is the module and the jars go to its own `build/libs`.
+
+Build scripts that refer to another part of the same module use `sibling("common")` (from `mc.xalitoria.gradle`), which is
+`:chat:common` in the workspace and `:common` in the chat repository on its own, instead of an absolute project path.
+
+#### Jar names
+
+Every jar is named `xali-<module>[-<part>]-<version>[-<classifier>].jar`. The classifier says which platform a plugin's jar
+is for. It is empty otherwise, so a library is an ordinary Maven artifact: a classifier on the main jar would make Maven
+consumers look for a file that does not exist.
+
+| Project | `jar` or `shadowJar` |
+|---|---|
+| The module itself (`util`) | `xali-util-0.1.0.jar` |
+| A platform of a plugin (`chat:paper`) | `xali-chat-0.7.1-paper.jar` |
+| Any other part (`chat:api`, `chat:common`) | `xali-chat-api-0.7.1.jar` |
+
+Any other jar task is named for what it is: `sourcesJar` gets `-sources`, and a multiplatform target's `paperJar` gets `-paper`.
+A part that is published (`chat:api`) has the Maven coordinates `mc.xalitoria.chat:api:<version>` and no classifier. The build
+fails before writing any jar if two jar tasks of one build would write the same file.
 
 ### The blocks
 
@@ -222,6 +286,21 @@ before stays. Plugins that cannot be downloaded without an account are put in `p
 
 ## Troubleshooting
 
+### `kotlin.version is ... in gradle.properties but the catalog's kotlin is ...`
+
+`kotlin.version` feeds the plugin versions in `settings.gradle.kts`, which cannot read the catalog, so the repository's
+`gradle.properties` and the catalog's `kotlin` have to be equal. Change both.
+
+### `Jar tasks write the same file`
+
+Two jar tasks would produce one file name, and the second would overwrite the first. The message names the tasks. Give one
+of them a classifier or a different project part, see [Jar names](#jar-names).
+
+### A module cannot find the plugin or the catalog on its own
+
+Run `./gradlew publishToMavenLocal` in `xali-gradle` first: a module outside the workspace reads both from the local Maven
+repository.
+
 ### The Velocity plugin fails with "Can't create plugin"
 
 Velocity needs an `@Inject` constructor or a loader. A plugin without any `api(...)` library gets no loader, and a plain
@@ -236,13 +315,17 @@ with `api(...)`, which is never a library. Declare external libraries with `api(
 
 ### Two projects collide as `mc.xalitoria:api`
 
-Gradle identifies projects by `group:name`. A submodule named `api` needs a group of its own (`chat/api` sets one), or
-it collides with `:menu:api`.
+Gradle identifies projects by `group:name`, so two submodules named `api` need different groups or one stands in for the
+other on a classpath. The `subprojects { group = ... }` block of `chat`, `friends` and `menu` sets `mc.xalitoria.<module>`;
+a new module should do the same.
 
 ## Development
 
 | File | Role |
 |---|---|
+| `libs.versions.toml` | The version catalog: every dependency and plugin version. Published as `xali-catalog`. |
+| `Conventions.kt` | The conventions plugin, the jar names and the `sibling` helper. |
+| `Repositories.kt` | The repository helpers (`mavenXalitoria()`, `reposilite(project, url)` and the rest) that build scripts import from `mc.xalitoria.gradle.repo`. |
 | `xali-gradle/kotlin/.../MinecraftPlugin.kt` | The plugin: registers the blocks and wires the tasks. |
 | `Extensions.kt` | The DSL: `paper { }`, `velocity { }`, dependencies and loader options. |
 | `Bundles.kt` | Which projects form a plugin and where their sources, resources and `api` dependencies are (a plain JVM project, or a multiplatform one). |
@@ -253,12 +336,11 @@ it collides with `:menu:api`.
 | `xali-gradle/java/.../loader` | The precompiled `PaperLoader` and `VelocityLoader`. |
 
 ```console
-user $ ./gradlew -p xali-gradle build
+user $ ./gradlew build
 ```
 
-The plugin is compiled before the main build starts, so a change to it takes effect on the next Gradle invocation. The
-Kotlin version is written in `xali-gradle/build.gradle.kts` (twice) as well as in the root files, see the
-[root README](../README.md#compiler-options).
+The plugin is compiled before the main build starts, so a change to it takes effect on the next Gradle invocation. Its
+own build reads its Kotlin and shadow versions from `libs.versions.toml`, like every other module.
 
 ## See also
 
