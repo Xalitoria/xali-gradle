@@ -14,4 +14,4 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "xali-minecraft"
+rootProject.name = "xali-gradle"

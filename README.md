@@ -1,4 +1,4 @@
-# xali-minecraft (Gradle plugin)
+# xali-gradle
 
 **`mc.xalitoria.minecraft`** is a Gradle plugin that describes a Paper or Velocity plugin and gets its libraries to the
 server. It covers what plugin-yml did for the descriptors, adds a loader for the libraries on both platforms and adds
@@ -7,7 +7,7 @@ tasks to run the plugin on a dev server. Only Paper and Velocity are supported, 
 ## Installation
 
 The plugin is a separate Gradle build in this folder. The main build includes it through
-`pluginManagement { includeBuild("plugin") }` in `settings.gradle.kts`, so it is built before any module uses it.
+`pluginManagement { includeBuild("xali-gradle") }` in `settings.gradle.kts`, so it is built before any module uses it.
 
 Declare it once in the root build script, so every module shares one copy:
 
@@ -138,7 +138,7 @@ downloaded either.
 
 By default the loader sits in the same package as the platform's `main` and is named after it with `Loader` added
 (`mc.xalitoria.vote.XaliVote` gets `mc.xalitoria.vote.XaliVoteLoader`). The class is not generated source. It is a
-precompiled Java class in this plugin (`plugin/java`) whose name, and every reference to it, is rewritten into the
+precompiled Java class in this plugin (`xali-gradle/java`) whose name, and every reference to it, is rewritten into the
 plugin's own. The jar therefore has its own copy and nothing depends on this plugin at run time.
 
 ```kotlin
@@ -243,21 +243,21 @@ it collides with `:menu:api`.
 
 | File | Role |
 |---|---|
-| `plugin/kotlin/.../MinecraftPlugin.kt` | The plugin: registers the blocks and wires the tasks. |
+| `xali-gradle/kotlin/.../MinecraftPlugin.kt` | The plugin: registers the blocks and wires the tasks. |
 | `Extensions.kt` | The DSL: `paper { }`, `velocity { }`, dependencies and loader options. |
 | `Bundles.kt` | Which projects form a plugin and where their sources, resources and `api` dependencies are (a plain JVM project, or a multiplatform one). |
 | `Descriptors.kt` | The text of `paper-plugin.yml` and `velocity-plugin.json`. |
 | `Libraries.kt` | Resolving the `api(...)` libraries, with checksums and exclusions. |
 | `Tasks.kt` | Writing files into the jar, and renaming the loader classes into the plugin's package (ASM). |
 | `Server.kt` | The dev server tasks and the pinned server builds. |
-| `plugin/java/.../loader` | The precompiled `PaperLoader` and `VelocityLoader`. |
+| `xali-gradle/java/.../loader` | The precompiled `PaperLoader` and `VelocityLoader`. |
 
 ```console
-user $ ./gradlew -p plugin build
+user $ ./gradlew -p xali-gradle build
 ```
 
 The plugin is compiled before the main build starts, so a change to it takes effect on the next Gradle invocation. The
-Kotlin version is written in `plugin/build.gradle.kts` (twice) as well as in the root files, see the
+Kotlin version is written in `xali-gradle/build.gradle.kts` (twice) as well as in the root files, see the
 [root README](../README.md#compiler-options).
 
 ## See also
