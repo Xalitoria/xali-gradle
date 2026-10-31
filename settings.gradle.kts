@@ -9,7 +9,7 @@ dependencyResolutionManagement {
     // The platform versions the loaders are compiled against are the main build's.
     versionCatalogs {
         create("libs") {
-            from(files("../libs.versions.toml"))
+            from(files("libs.versions.toml"))
         }
     }
 }
