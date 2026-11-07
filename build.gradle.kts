@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "mc.xalitoria"
-version = "0.1.1"
+version = "0.1.2"
 
 dependencies {
     // Renames the loader classes into the plugin's own package.
