@@ -1,13 +1,17 @@
 [versions]
-kotlin = "2.4.20"
-shadow = "9.3.0"
-minecraft = "26.2.build.+"
-jackson = "2.17.2"
-ktor = "3.4.0"
-exposed = "1.0.0"
-adventure = "4.26.1"
-coroutines = "1.10.2"
-serialization = "1.8.1"
+kotlin = "2.4.21"
+shadow = "9.6.1"
+minecraft = "26.3.build.+"
+# Folia publishes no stable build of 26.3 yet; this is the newest of its dev line.
+folia = "26.3.build.6-alpha"
+jackson = "2.22.4"
+ktor = "3.6.1"
+exposed = "1.6.1"
+adventure = "5.2.0"
+# adventure-extra-kotlin has no 5.x release.
+adventure-kotlin = "4.26.1"
+coroutines = "1.11.0"
+serialization = "1.12.0"
 nuvotifier = "2.7.1"
 
 [plugins]
@@ -15,13 +19,13 @@ shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-ksp = { id = "com.google.devtools.ksp", version = "2.3.6" }
-minecraft = { id = "mc.xalitoria.minecraft", version = "0.1.0"}
+ksp = { id = "com.google.devtools.ksp", version = "2.3.13" }
+minecraft = { id = "mc.xalitoria.minecraft", version = "0.1.1"}
 
 [libraries]
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 shadow-gradle-plugin = { module = "com.gradleup.shadow:shadow-gradle-plugin", version.ref = "shadow" }
-asm-commons = { module = "org.ow2.asm:asm-commons", version = "9.9" }
+asm-commons = { module = "org.ow2.asm:asm-commons", version = "9.11.1" }
 
 kotlinx-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
@@ -32,7 +36,7 @@ ktor-server-cio = { module = "io.ktor:ktor-server-cio-jvm", version.ref = "ktor"
 ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negotiation-jvm", version.ref = "ktor" }
 ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json-jvm", version.ref = "ktor" }
 
-jedis = { module = "redis.clients:jedis", version = "6.0.0" }
+jedis = { module = "redis.clients:jedis", version = "8.0.2" }
 kaml = { module = "com.charleskorn.kaml:kaml", version = "0.104.0" }
 mixbox = { module = "com.scrtwpns:mixbox", version = "2.0.0" }
 
@@ -41,20 +45,20 @@ jackson-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin"
 jackson-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
 
 paper-api = { module = "io.papermc.paper:paper-api", version.ref = "minecraft" }
-folia-api = { module = "dev.folia:folia-api", version.ref = "minecraft" }
-velocity-api = { module = "com.velocitypowered:velocity-api", version = "4.2.0" }
+folia-api = { module = "dev.folia:folia-api", version.ref = "folia" }
+velocity-api = { module = "com.velocitypowered:velocity-api", version = "4.3.1" }
 
 discordsrv = { module = "com.discordsrv:discordsrv-api", version = "3.0.0+" }
-nbtapi = { module = "de.tr7zw:item-nbt-api-plugin", version = "2.15.2" }
+nbtapi = { module = "de.tr7zw:item-nbt-api-plugin", version = "2.16.1" }
 nuvotifier-universal = { module = "com.github.NuVotifier.NuVotifier:nuvotifier-universal", version.ref = "nuvotifier" }
 nuvotifier-velocity = { module = "com.github.NuVotifier.NuVotifier:nuvotifier-velocity", version.ref = "nuvotifier" }
 protocollib = { module = "net.dmulloy2:ProtocolLib", version = "5.5.0+" }
-plan = { module = "com.github.plan-player-analytics:Plan", version = "5.9.3705" }
+plan = { module = "com.github.plan-player-analytics:Plan", version = "5.9.3786" }
 placeholderapi = { module = "me.clip:placeholderapi", version = "2.12.3" }
 vanish-api = { module = "com.github.LeonMangler:SuperVanish", version = "6.2.18-3" }
 premiumvanish-api = { module = "com.github.LeonMangler:PremiumVanishAPI", version = "2.9.18-2" }
-vault = { module = "com.github.MilkBowl:VaultAPI", version = "1.7" }
-vaultunlocked = { module = "net.milkbowl.vault:VaultUnlockedAPI", version = "2.16" }
+vault = { module = "com.github.MilkBowl:VaultAPI", version = "1.7.1" }
+vaultunlocked = { module = "net.milkbowl.vault:VaultUnlockedAPI", version = "2.20" }
 itemsadder = { module = "com.github.LoneDev6:API-ItemsAdder", version = "3.6.1" }
 nexo = { module = "com.nexomc:nexo", version = "1.29.1" }
 skinsrestorer = { module = "net.skinsrestorer:skinsrestorer-api", version = "15.12.6" }
@@ -73,12 +77,12 @@ exposed-kotlin-datetime = { module = "org.jetbrains.exposed:exposed-kotlin-datet
 exposed-migration-jdbc = { module = "org.jetbrains.exposed:exposed-migration-jdbc", version.ref = "exposed" }
 
 hikaricp = { module = "com.zaxxer:HikariCP", version = "7.1.0" }
-mariadb = { module = "org.mariadb.jdbc:mariadb-java-client", version = "3.5.9" }
-mysql = { module = "com.mysql:mysql-connector-j", version = "9.3.0" }
-sqlite = { module = "org.xerial:sqlite-jdbc", version = "3.47.1.0" }
+mariadb = { module = "org.mariadb.jdbc:mariadb-java-client", version = "4.0.0" }
+mysql = { module = "com.mysql:mysql-connector-j", version = "26.10.0" }
+sqlite = { module = "org.xerial:sqlite-jdbc", version = "3.54.1.0" }
 
 adventure-api = { module = "net.kyori:adventure-api", version.ref = "adventure" }
-adventure-kotlin = { module = "net.kyori:adventure-extra-kotlin", version.ref = "adventure" }
+adventure-kotlin = { module = "net.kyori:adventure-extra-kotlin", version.ref = "adventure-kotlin" }
 adventure-nbt = { module = "net.kyori:adventure-nbt", version.ref = "adventure" }
 minimessage = { module = "net.kyori:adventure-text-minimessage", version.ref = "adventure" }
 minimessage-plain = { module = "net.kyori:adventure-text-serializer-plain", version.ref = "adventure" }
