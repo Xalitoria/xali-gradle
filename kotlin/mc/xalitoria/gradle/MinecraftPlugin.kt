@@ -56,8 +56,9 @@ class MinecraftPlugin : Plugin<Project> {
             val manifest = project.tasks.register("generate${prefix}LoaderManifest", WriteFile::class.java) { task ->
                 task.fileName.set("loader.json")
                 task.content.set(
-                    if (velocity == null) libraries.direct.map { manifest("", libraries.repositories, it, emptyList()) }
-                    else libraries.direct.zip(libraries.resolved) { direct, resolved -> manifest(velocity.main!!, libraries.repositories, direct, resolved) }
+                    if (velocity == null) libraries.direct.zip(libraries.repositories) { direct, repositories -> manifest("", repositories, direct, emptyList()) }
+                    else libraries.direct.zip(libraries.resolved) { direct, resolved -> direct to resolved }
+                        .zip(libraries.repositories) { (direct, resolved), repositories -> manifest(velocity.main!!, repositories, direct, resolved) }
                 )
                 task.outputDirectory.set(project.layout.buildDirectory.dir("generated/xali/${bundle.key.ifEmpty { "main" }}/loader-manifest"))
             }

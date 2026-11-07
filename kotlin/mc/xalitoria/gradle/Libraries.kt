@@ -23,8 +23,8 @@ private val central = listOf("https://repo.maven.apache.org/maven2/", "https://r
  * will really get. All of it is lazy, so nothing resolves until a task needs it.
  */
 internal class Libraries(
-    /** `name` to URL, for every repository the project, its parents and its modules use. */
-    val repositories: Map<String, String>,
+    /** `name` to URL, for the repositories the project, its parents and its modules use that serve a library of the loader. */
+    val repositories: Provider<Map<String, String>>,
     /** The `group:name:version` of each library declared, as Paper's resolver wants them (it adds their dependencies). */
     val direct: Provider<List<String>>,
     /** The `group:name:version:sha256` of those and everything they need, as Velocity's loader wants them. */
@@ -56,8 +56,16 @@ internal fun libraries(bundle: Bundle): Libraries? {
     }
 
     val artifacts = configuration.incoming.artifacts.resolvedArtifacts
+    val declaredRepositories = repositories(project, centralProxy)
+    val resolved = artifacts.map { set ->
+        set.mapNotNull { artifact ->
+            (artifact.id.componentIdentifier as? ModuleComponentIdentifier)
+                ?.takeIf { module -> exclude.none { matches(it, module.group, module.module) } }
+                ?.let { "${it.group}:${it.module}:${it.version}:${sha256(artifact.file.readBytes())}" }
+        }.distinct().sorted()
+    }
     return Libraries(
-        repositories = repositories(project, centralProxy),
+        repositories = resolved.map { usedRepositories(declaredRepositories, it) },
         direct = configuration.incoming.resolutionResult.rootComponent.map { root ->
             root.dependencies.asSequence().filterIsInstance<ResolvedDependencyResult>()
                 .mapNotNull { it.selected.moduleVersion }
@@ -65,13 +73,7 @@ internal fun libraries(bundle: Bundle): Libraries? {
                 .map { "${it.group}:${it.name}:${it.version}" }
                 .distinct().sorted().toList()
         },
-        resolved = artifacts.map { set ->
-            set.mapNotNull { artifact ->
-                (artifact.id.componentIdentifier as? ModuleComponentIdentifier)
-                    ?.takeIf { module -> exclude.none { matches(it, module.group, module.module) } }
-                    ?.let { "${it.group}:${it.module}:${it.version}:${sha256(artifact.file.readBytes())}" }
-            }.distinct().sorted()
-        },
+        resolved = resolved,
         closure = artifacts.map { set ->
             set.mapNotNull { (it.id.componentIdentifier as? ModuleComponentIdentifier)?.let { module -> "${module.group}:${module.module}" } }.toSet()
         },
@@ -80,7 +82,8 @@ internal fun libraries(bundle: Bundle): Libraries? {
 
 /**
  * Every Maven repository with a web address that [project], its parents and the projects below it declare, in that
- * order and without repeats. Local ones are no use to a server, and Central is swapped for a mirror if asked.
+ * order and without repeats. Local ones are no use to a server, and Central is swapped for a mirror if asked. Only the
+ * ones that serve a library of the loader are written, see [usedRepositories].
  */
 private fun repositories(project: Project, centralProxy: Boolean): Map<String, String> {
     val owners = generateSequence(project) { it.parent }.toList() + project.allprojects

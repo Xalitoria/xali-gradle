@@ -190,8 +190,12 @@ downloaded either.
 }
 ```
 
-- `repositories`: every Maven repository with a web address that the project, its parents and the projects below it
-  declare, without repeats. Maven Central is swapped for a mirror (`loader { centralProxy = false }` keeps it).
+- `repositories`: the Maven repositories with a web address, declared by the project, its parents or the projects below
+  it, that serve a library of the loader. Each library is asked of the repositories in their order (an HTTP `HEAD` for its
+  `.pom`), as Gradle and the loaders do, and the first that has it is the one listed, so a plugin that only uses Maven
+  Central lists only that. A library no repository answers for (one that is only in the local Maven repository) adds
+  nothing; if a repository cannot be reached the build says so and keeps it. Maven Central is swapped for a mirror
+  (`loader { centralProxy = false }` keeps it).
 - `dependencies`: the `api(...)` libraries as resolved. Paper's own resolver reads this, downloads them with their
   dependencies, and shares them between plugins.
 - `libraries`: those and everything they need, with checksums. Velocity cannot resolve anything itself, so its loader
