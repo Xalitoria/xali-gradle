@@ -93,7 +93,7 @@ consumers look for a file that does not exist.
 | Any other part (`chat:api`, `chat:common`) | `xali-chat-api-0.7.1.jar` |
 
 Any other jar task is named for what it is: `sourcesJar` gets `-sources`, and a multiplatform target's `paperJar` gets `-paper`.
-A part that is published (`chat:api`) has the Maven coordinates `mc.xalitoria.chat:api:<version>` and no classifier. The build
+A part that is published (`chat:api`) has the Maven coordinates `net.xalitoria.chat:api:<version>` and no classifier. The build
 fails before writing any jar if two jar tasks of one build would write the same file.
 
 ### The blocks
@@ -115,7 +115,7 @@ import mc.xalitoria.gradle.RelativeLoad
 
 paper {
     name = "XaliVote"                       // default: the project's name (the module's, for a submodule)
-    main = "mc.xalitoria.vote.XaliVote"
+    main = "mc.xalitoria.vote.paper.XaliVote"
     version = "1.0"                         // default: the project's version
     description = "..."                     // default: the project's description
     apiVersion = "1.21"
@@ -313,11 +313,11 @@ It was declared with `implementation(...)` in a project that does not shade it, 
 with `api(...)`, which is never a library. Declare external libraries with `api(...)` and project dependencies with
 `implementation(...)`.
 
-### Two projects collide as `mc.xalitoria:api`
+### Two projects collide as `net.xalitoria:api`
 
 Gradle identifies projects by `group:name`, so two submodules named `api` need different groups or one stands in for the
-other on a classpath. The `subprojects { group = ... }` block of `chat`, `friends` and `menu` sets `mc.xalitoria.<module>`;
-a new module should do the same.
+other on a classpath. The `subprojects { group = ... }` block of each plugin names the group for the package of the part (`net.xalitoria.chat` for `api`,
+`com.xalitoria.chat` for `common`, `mc.xalitoria.chat.paper` for `paper`, `mc.xalitoria.chat.velocity` for `velocity`); a new module should do the same.
 
 ## Development
 
