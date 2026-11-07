@@ -1,7 +1,7 @@
 [versions]
 kotlin = "2.4.20"
 shadow = "9.3.0"
-minecraft = "26.2+"
+minecraft = "26.2.build.+"
 jackson = "2.17.2"
 ktor = "3.4.0"
 exposed = "1.0.0"
@@ -62,7 +62,7 @@ headdatabase = { module = "com.arcaniax:HeadDatabase-API", version = "1.3.2" }
 
 # The Xali libraries, as other modules depend on them. The workspace swaps in the projects (see build.gradle.kts).
 xalicraft-color = { module = "mc.xalitoria:color", version = "0.1.1" }
-xalicraft-util = { module = "mc.xalitoria:util", version = "0.2.0" }
+xalicraft-util = { module = "mc.xalitoria:util", version = "0.2.1" }
 xali-chat-api = { module = "mc.xalitoria.chat:api", version = "0.9.0" }
 xali-menu-api = { module = "mc.xalitoria.menu:api", version = "0.0.1" }
 
