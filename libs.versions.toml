@@ -66,9 +66,10 @@ headdatabase = { module = "com.arcaniax:HeadDatabase-API", version = "1.3.2" }
 
 # The Xali libraries, as other modules depend on them. The workspace swaps in the projects (see build.gradle.kts).
 xalicraft-color = { module = "com.xalitoria:color", version = "0.2.0" }
-xalicraft-util = { module = "com.xalitoria:util", version = "0.4.0" }
-xali-chat-api = { module = "net.xalitoria.chat:api", version = "1.1.0" }
-xali-menu-api = { module = "net.xalitoria.menu:api", version = "0.2.0" }
+xalicraft-util = { module = "com.xalitoria:util", version = "0.5.0" }
+xali-chat-api = { module = "net.xalitoria.chat:api", version = "1.2.0" }
+xali-menu-api = { module = "net.xalitoria.menu:api", version = "0.3.0" }
+xali-playtime-api = { module = "net.xalitoria.playtime:api", version = "0.1.0" }
 
 exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
 exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed" }

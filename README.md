@@ -10,7 +10,24 @@
 - **The version catalog**, `libs.versions.toml`, names every dependency and plugin version once. It is published as
   `mc.xalitoria:xali-catalog`, and the workspace reads the file itself.
 
+## Contents
+
+- [Installation](#installation)
+- [Configuration](#configuration): [The conventions plugin](#the-conventions-plugin), [The blocks](#the-blocks),
+  [Loading libraries](#loading-libraries)
+- [Usage](#usage): [The dev server](#the-dev-server)
+- [Troubleshooting](#troubleshooting)
+- [Development](#development)
+- [See also](#see-also)
+
 ## Installation
+
+### Requirements
+
+Gradle 9 (the wrapper of the workspace) and Java 25: the plugin and the loaders it copies into plugins are compiled for
+Java 25, as Paper 26 and Velocity 4 run on it. The plugin applies to Kotlin JVM projects, optionally with the shadow plugin.
+
+### Building
 
 This is a separate Gradle build. The workspace includes it through `pluginManagement { includeBuild("xali-gradle") }` in
 its `settings.gradle.kts`, so it is built before any module uses it. A module repository on its own reads it from the
@@ -57,7 +74,7 @@ module and every project below it, so the same script works in the workspace and
 
 ```kotlin
 plugins {
-    kotlin("jvm")                          // kotlin("multiplatform") for vote, before the conventions
+    kotlin("jvm")                          // kotlin("multiplatform") for a multiplatform module, before the conventions
     id("mc.xalitoria.conventions")
 }
 ```
@@ -105,9 +122,10 @@ the build script of the module, or of a submodule:
 - A module whose submodule is named after the platform (`chat` with `chat/paper` and `chat/velocity`) only describes it.
   The submodule is the plugin and takes the module's block. A block in the submodule's own script wins.
 - A Kotlin Multiplatform project uses a JVM target named after each platform (`jvm("paper")`, `jvm("velocity")`), which
-  builds one jar each. `vote` is laid out this way.
+  builds one jar each. None of the Xali modules is laid out this way now: `vote` was, and is `vote/common`, `vote/paper`
+  and `vote/velocity` because two `jvm()` targets print a build warning that cannot be suppressed.
 
-**File** `vote/build.gradle.kts`
+**File** `vote/build.gradle.kts` (the blocks of a module whose submodules are named after the platforms)
 
 ```kotlin
 import mc.xalitoria.gradle.Load
@@ -133,7 +151,7 @@ paper {
 velocity {
     name = "XaliVote"
     id = "xalivote"                         // default: the name, lowercased
-    main = "mcv.xalitoria.vote.XaliVote"
+    main = "mc.xalitoria.vote.velocity.XaliVote"
     url = "https://xalitoria.com"
     author = "audizian"
     dependencies { register("nuvotifier") { required = true } }
@@ -183,7 +201,7 @@ downloaded either.
 
 ```json
 {
-  "main": "mcv.xalitoria.vote.XaliVote",
+  "main": "mc.xalitoria.vote.velocity.XaliVote",
   "repositories": { "MavenRepo": "https://maven-central.storage-download.googleapis.com/maven2/" },
   "dependencies": [ "com.charleskorn.kaml:kaml-jvm:0.104.0" ],
   "libraries": [ { "coordinates": "com.charleskorn.kaml:kaml-jvm:0.104.0", "sha256": "..." } ]
@@ -205,7 +223,7 @@ downloaded either.
 #### The loader class
 
 By default the loader sits in the same package as the platform's `main` and is named after it with `Loader` added
-(`mc.xalitoria.vote.XaliVote` gets `mc.xalitoria.vote.XaliVoteLoader`). The class is not generated source. It is a
+(`mc.xalitoria.vote.velocity.XaliVote` gets `mc.xalitoria.vote.velocity.XaliVoteLoader`). The class is not generated source. It is a
 precompiled Java class in this plugin (`xali-gradle/java`) whose name, and every reference to it, is rewritten into the
 plugin's own. The jar therefore has its own copy and nothing depends on this plugin at run time.
 
@@ -285,7 +303,7 @@ point `directory` at the same folder share the server: each installs its own jar
 before stays. Plugins that cannot be downloaded without an account are put in `plugins` by hand.
 
 > [!NOTE]
-> The root build points `chat`, `friends` and `menu` at one shared server, see the
+> The root build points `chat`, `friends`, `menu`, `redeem` and `refer` at one shared server, see the
 > [root README](../README.md#dev-servers).
 
 ## Troubleshooting
@@ -325,6 +343,10 @@ other on a classpath. The `subprojects { group = ... }` block of each plugin nam
 
 ## Development
 
+The plugin is Kotlin in `kotlin/mc/xalitoria/gradle` and two Java loaders in `java/mc/xalitoria/gradle/loader`; it has no
+tests of its own. Check a change by building a module that uses it (`./gradlew :chat:paper:shadowJar`, then unzip the jar
+and read `paper-plugin.yml` and `loader.json`) and with a dev server (`runServer`).
+
 | File | Role |
 |---|---|
 | `libs.versions.toml` | The version catalog: every dependency and plugin version. Published as `xali-catalog`. |
@@ -335,19 +357,42 @@ other on a classpath. The `subprojects { group = ... }` block of each plugin nam
 | `Bundles.kt` | Which projects form a plugin and where their sources, resources and `api` dependencies are (a plain JVM project, or a multiplatform one). |
 | `Descriptors.kt` | The text of `paper-plugin.yml` and `velocity-plugin.json`. |
 | `Libraries.kt` | Resolving the `api(...)` libraries, with checksums and exclusions. |
+| `RepositoryProbe.kt` | Which repositories serve a library: an HTTP `HEAD` of each module's pom, first repository in order wins. Fills `repositories` of `loader.json`. |
 | `Tasks.kt` | Writing files into the jar, and renaming the loader classes into the plugin's package (ASM). |
 | `Server.kt` | The dev server tasks and the pinned server builds. |
 | `xali-gradle/java/.../loader` | The precompiled `PaperLoader` and `VelocityLoader`. |
 
 ```console
 user $ ./gradlew build
+user $ ./gradlew publishToMavenLocal
 ```
 
 The plugin is compiled before the main build starts, so a change to it takes effect on the next Gradle invocation. Its
 own build reads its Kotlin and shadow versions from `libs.versions.toml`, like every other module.
 
+**Releasing a version**
+
+1. Raise `version` in `build.gradle.kts` only when the plugin's own package changed, and the `minecraft` plugin version in
+   `libs.versions.toml`, and the `useVersion` and `xali-catalog` lines of every repository's `settings.gradle.kts`, to match.
+2. Run `./gradlew publishToMavenLocal`. The plugins and the catalog are never published to a remote repository: a
+   module built on its own reads them from the local Maven repository.
+3. The catalog holds the pins of the published Xali libraries (`xalicraft-util`, `xalicraft-color`, `xali-chat-api`,
+   `xali-menu-api`). Raise one only after that library is on `maven.xali.host`, see the
+   [root README](../README.md#releasing).
+
+**Changing the Kotlin or Paper version**
+
+Change `kotlin` in `libs.versions.toml` and `kotlin.version` in every repository's `gradle.properties` together; the build
+fails when they differ. `minecraft` is `26.x.build.+`, the stable Paper API line: a pre-release resolves a different
+Adventure and compiles fine, then fails at run time. Folia has its own entry (`folia`), pinned to the newest build it
+publishes. Run one build without `--offline` to fetch a new version.
+
 ## See also
 
 - [Root README](../README.md) — modules, source layout and dev servers
+
+## External resources
+
 - [Gradle: Writing custom plugins](https://docs.gradle.org/current/userguide/custom_plugins.html)
 - [Paper plugin.yml](https://docs.papermc.io/paper/dev/getting-started/paper-plugins/) — the descriptor format
+- [Velocity plugin.json](https://docs.papermc.io/velocity/dev/creating-your-first-plugin) — the proxy's descriptor
