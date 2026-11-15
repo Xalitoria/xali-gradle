@@ -81,13 +81,17 @@ plugins {
 
 It sets up:
 
-- the repositories (Maven Central and the Xali, Paper, CodeMC, JitPack and HelpChat ones, with the local Maven repository first);
+- the [repositories](#repositories): Maven Central and the Xali, Paper, CodeMC, JitPack, HelpChat and dmulloy2 ones, each asked only
+  for the groups it serves;
 - Kotlin on Java 25 (a module that needs less sets its own toolchain after this), the opt-ins, and the language previews
   every module is written against (collection literals, name-based destructuring and context-sensitive resolution, see the
   [root README](../README.md#compiler-options));
 - the source layout: `kotlin/`, `java/`, `resources/`, `test/` and `test-resources/`, in place of `src/main/...`;
 - the [jar names](#jar-names), and a check that no two jars of one build get the same file name;
-- a default Maven publication of the main jar for a project that applies `maven-publish` and defines none of its own;
+- reproducible archives (no timestamps, a fixed file order), so the same sources give the same jar and the build cache is hit
+  across machines;
+- `build`, `check` and `test` of a module that holds parts (`chat`) that run the parts' tasks, so `./gradlew :chat:build` builds all of chat;
+- [publishing](#publishing) for a project that applies `maven-publish`;
 - a check that `kotlin.version` in `gradle.properties` equals `kotlin` in the catalog.
 
 A Kotlin Multiplatform project keeps its own targets and source sets: apply the multiplatform plugin before the conventions.
@@ -96,6 +100,37 @@ jars go to the root's `build/libs/<module>/`. Without it, the root project is th
 
 Build scripts that refer to another part of the same module use `sibling("common")` (from `mc.xalitoria.gradle`), which is
 `:chat:common` in the workspace and `:common` in the chat repository on its own, instead of an absolute project path.
+
+#### Repositories
+
+Gradle asks the repositories in order for each module and uses the first that has it. A repository with no filter is asked for every
+library of every module and answers for any name, which costs time and lets whoever runs it shadow a library. So each repository
+declares what it serves (`mavenContent`): the Xali ones their groups, JitPack `com.github.*` except NuVotifier, HelpChat `me.clip`,
+dmulloy2 ProtocolLib, CodeMC two groups. Central and PaperMC serve anything. Sonatype's and HelpChat's snapshot repositories only
+serve snapshots.
+
+The local Maven repository is on one machine only, so it serves just `com.discordsrv`, which no public repository has (see the
+catalog), and, for a module built on its own, the Xali groups. A library from a repository that is not in the list is added in
+the module's build script with a filter of its own:
+
+```kotlin
+repositories {
+    maven("https://repo.example.com/releases") { content { includeGroup("com.example") } }
+}
+```
+
+A dependency declared with `+` is whatever is newest the day it is built, so the build changes without a commit. Declare libraries
+from the catalog. The `kotlinx(...)` helper that wrote `+` is deprecated.
+
+#### Publishing
+
+A project that applies `maven-publish` publishes its main jar and its sources (`xali-util-0.5.0-sources.jar`) as `mavenJava` unless it
+defines a publication of its own, to the repository `xali`: `https://maven.xali.host/releases`, or `/snapshots` for a `-SNAPSHOT`
+version. The credentials are `MAVEN_USER` and `MAVEN_TOKEN`, or the Gradle properties `maven.user` and `maven.token`. A module's
+build script needs only `` `maven-publish` ``.
+
+The releases repository accepts overwrites and servers keep what they downloaded, so `checkNotPublished` runs before every upload
+and fails when the version's pom is already there. `-Pxali.overwrite=true` says that replacing it is meant.
 
 #### Jar names
 
@@ -320,8 +355,13 @@ of them a classifier or a different project part, see [Jar names](#jar-names).
 
 ### A module cannot find the plugin or the catalog on its own
 
-Run `./gradlew publishToMavenLocal` in `xali-gradle` first: a module outside the workspace reads both from the local Maven
-repository.
+A module outside the workspace reads both from `maven.xali.host` once they are published there, and from the local Maven repository
+until then. Run `./gradlew publishToMavenLocal` in `xali-gradle` first.
+
+### `Could not find ...` for a library that another repository serves
+
+The repositories answer only for their groups, see [Repositories](#repositories). Add the group to the repository's filter (or the
+repository, with a filter, to the module's build script).
 
 ### The Velocity plugin fails with "Can't create plugin"
 
@@ -351,14 +391,14 @@ and read `paper-plugin.yml` and `loader.json`) and with a dev server (`runServer
 |---|---|
 | `libs.versions.toml` | The version catalog: every dependency and plugin version. Published as `xali-catalog`. |
 | `Conventions.kt` | The conventions plugin, the jar names and the `sibling` helper. |
-| `Repositories.kt` | The repository helpers (`mavenXalitoria()`, `reposilite(project, url)` and the rest) that build scripts import from `mc.xalitoria.gradle.repo`. |
+| `Repositories.kt` | The repository helpers (`mavenXalitoria()`, `reposilite(project, url)` and the rest) that build scripts import from `mc.xalitoria.gradle.repo`, each with the groups it serves. |
 | `xali-gradle/kotlin/.../MinecraftPlugin.kt` | The plugin: registers the blocks and wires the tasks. |
 | `Extensions.kt` | The DSL: `paper { }`, `velocity { }`, dependencies and loader options. |
 | `Bundles.kt` | Which projects form a plugin and where their sources, resources and `api` dependencies are (a plain JVM project, or a multiplatform one). |
 | `Descriptors.kt` | The text of `paper-plugin.yml` and `velocity-plugin.json`. |
 | `Libraries.kt` | Resolving the `api(...)` libraries, with checksums and exclusions. |
 | `RepositoryProbe.kt` | Which repositories serve a library: an HTTP `HEAD` of each module's pom, first repository in order wins. Fills `repositories` of `loader.json`. |
-| `Tasks.kt` | Writing files into the jar, and renaming the loader classes into the plugin's package (ASM). |
+| `Tasks.kt` | Writing files into the jar, renaming the loader classes into the plugin's package (ASM), and `checkNotPublished`. |
 | `Server.kt` | The dev server tasks and the pinned server builds. |
 | `xali-gradle/java/.../loader` | The precompiled `PaperLoader` and `VelocityLoader`. |
 
@@ -374,8 +414,10 @@ own build reads its Kotlin and shadow versions from `libs.versions.toml`, like e
 
 1. Raise `version` in `build.gradle.kts` only when the plugin's own package changed, and the `minecraft` plugin version in
    `libs.versions.toml`, and the `useVersion` and `xali-catalog` lines of every repository's `settings.gradle.kts`, to match.
-2. Run `./gradlew publishToMavenLocal`. The plugins and the catalog are never published to a remote repository: a
-   module built on its own reads them from the local Maven repository.
+2. Run `./gradlew publishToMavenLocal`. `./gradlew publish` uploads the plugins and the catalog to `maven.xali.host/releases` (credentials
+   as for the libraries, see [Publishing](#publishing)); nothing runs it by itself, and it has no check for a version that is already
+   there, so look first (`curl -I https://maven.xali.host/releases/mc/xalitoria/xali-catalog/<version>/xali-catalog-<version>.pom`). Until it is
+   done a module built on its own reads them from the local Maven repository; after it, a clone of one repository builds with no setup.
 3. The catalog holds the pins of the published Xali libraries (`xalicraft-util`, `xalicraft-color`, `xali-chat-api`,
    `xali-menu-api`). Raise one only after that library is on `maven.xali.host`, see the
    [root README](../README.md#releasing).

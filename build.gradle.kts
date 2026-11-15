@@ -57,6 +57,18 @@ catalog {
 }
 
 publishing {
+    // `./gradlew publish` uploads the plugins, their markers and the catalog, so a clone of one repository builds with no setup.
+    // Nothing runs it by itself. Check first that the version is not on the server yet: a release can be overwritten there, and
+    // servers keep what they downloaded.
+    repositories {
+        maven("https://maven.xali.host/releases") {
+            name = "xali"
+            credentials {
+                username = System.getenv("MAVEN_USER") ?: project.findProperty("maven.user") as? String
+                password = System.getenv("MAVEN_TOKEN") ?: project.findProperty("maven.token") as? String
+            }
+        }
+    }
     publications {
         create<MavenPublication>("catalog") {
             artifactId = "xali-catalog"

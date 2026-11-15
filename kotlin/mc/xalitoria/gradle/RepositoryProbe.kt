@@ -60,7 +60,8 @@ private val client: HttpClient by lazy {
     HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).connectTimeout(Duration.ofSeconds(8)).build()
 }
 
-private fun headStatus(url: String): Int? = try {
+/** The HTTP status of a `HEAD` of [url] (a `GET` where the server does not answer `HEAD`), or `null` when it could not be asked. */
+internal fun headStatus(url: String): Int? = try {
     val request = HttpRequest.newBuilder(URI(url)).timeout(Duration.ofSeconds(8)).method("HEAD", HttpRequest.BodyPublishers.noBody())
     var response = client.send(request.build(), HttpResponse.BodyHandlers.discarding())
     // Some servers do not answer HEAD.

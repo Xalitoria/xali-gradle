@@ -11,7 +11,8 @@ adventure = "5.2.0"
 # adventure-extra-kotlin has no 5.x release.
 adventure-kotlin = "4.26.1"
 coroutines = "1.11.0"
-serialization = "1.12.0"
+# Libraries that were declared with `+` (see mc.xalitoria.gradle.repo.kotlinx) resolved to 1.13, which util 0.5.0 was published with.
+serialization = "1.13.0"
 nuvotifier = "2.7.1"
 
 [plugins]
@@ -29,6 +30,9 @@ asm-commons = { module = "org.ow2.asm:asm-commons", version = "9.11.1" }
 
 kotlinx-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "serialization" }
+# What util 0.5.0 was published with: it was the newest build when its dependencies were `+`.
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version = "0.8.0-0.6.x-compat" }
 kotlinx-serialization-hocon = { module = "org.jetbrains.kotlinx:kotlinx-serialization-hocon", version.ref = "serialization" }
 
 ktor-server-core = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor" }
@@ -48,11 +52,13 @@ paper-api = { module = "io.papermc.paper:paper-api", version.ref = "minecraft" }
 folia-api = { module = "dev.folia:folia-api", version.ref = "folia" }
 velocity-api = { module = "com.velocitypowered:velocity-api", version = "4.3.1" }
 
-discordsrv = { module = "com.discordsrv:discordsrv-api", version = "3.0.0+" }
+# DiscordSRV Ascension: no public repository has its API yet. Build it from github.com/DiscordSRV/Ascension (`./gradlew :api:publishToMavenLocal`).
+discordsrv = { module = "com.discordsrv:discordsrv-api", version = "3.0.0-SNAPSHOT" }
 nbtapi = { module = "de.tr7zw:item-nbt-api-plugin", version = "2.16.1" }
 nuvotifier-universal = { module = "com.github.NuVotifier.NuVotifier:nuvotifier-universal", version.ref = "nuvotifier" }
 nuvotifier-velocity = { module = "com.github.NuVotifier.NuVotifier:nuvotifier-velocity", version.ref = "nuvotifier" }
-protocollib = { module = "net.dmulloy2:ProtocolLib", version = "5.5.0+" }
+# A development build on repo.dmulloy2.net (the newest release is 5.4.0).
+protocollib = { module = "net.dmulloy2:ProtocolLib", version = "5.5.0-SNAPSHOT" }
 plan = { module = "com.github.plan-player-analytics:Plan", version = "5.9.3786" }
 placeholderapi = { module = "me.clip:placeholderapi", version = "2.12.3" }
 vanish-api = { module = "com.github.LeonMangler:SuperVanish", version = "6.2.18-3" }

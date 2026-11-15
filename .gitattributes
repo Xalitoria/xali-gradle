@@ -1,0 +1,7 @@
+# Line endings are LF everywhere (see .editorconfig), so a checkout on Windows still runs gradlew and the scripts.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.jar binary
+*.png binary
+*.ogg binary
+*.zip binary

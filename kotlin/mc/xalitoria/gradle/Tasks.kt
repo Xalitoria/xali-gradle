@@ -1,6 +1,7 @@
 package mc.xalitoria.gradle
 
 import org.gradle.api.DefaultTask
+import org.gradle.api.GradleException
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
@@ -56,6 +57,37 @@ abstract class GenerateLoaderClasses : DefaultTask() {
             val writer = ClassWriter(0)
             ClassReader(bytes).accept(ClassRemapper(writer, SimpleRemapper(mapOf(from to to))), 0)
             output.resolve("$to.class").apply { parentFile.mkdirs() }.writeBytes(writer.toByteArray())
+        }
+    }
+}
+
+/**
+ * Fails when [coordinates] (`group:name:version`) already has a pom on [repository]. A release can be overwritten on
+ * `maven.xali.host`, but servers cache what they downloaded, so the second upload of a version reaches some servers and
+ * not others. [overwrite] (`-Pxali.overwrite=true`) says it is meant.
+ */
+@DisableCachingByDefault(because = "Asks a server")
+abstract class CheckNotPublished : DefaultTask() {
+    @get:Input
+    abstract val repository: Property<String>
+
+    @get:Input
+    abstract val coordinates: Property<String>
+
+    @get:Input
+    abstract val overwrite: Property<Boolean>
+
+    @TaskAction
+    fun check() {
+        val parts = coordinates.get().split(":")
+        val (group, name, version) = parts
+        val pom = "${repository.get().trimEnd('/')}/${group.replace('.', '/')}/$name/$version/$name-$version.pom"
+        when (val status = headStatus(pom)) {
+            404 -> {}
+            200 -> if (overwrite.get()) logger.warn("Overwriting ${coordinates.get()}: servers that downloaded it keep their copy.") else {
+                throw GradleException("${coordinates.get()} is already on ${repository.get()}. Raise the version, or pass -Pxali.overwrite=true to replace it (servers keep what they downloaded).")
+            }
+            else -> throw GradleException("Could not tell whether ${coordinates.get()} is on ${repository.get()} (${status ?: "no answer"} for $pom).")
         }
     }
 }

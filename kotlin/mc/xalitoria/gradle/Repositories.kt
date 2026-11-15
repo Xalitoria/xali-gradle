@@ -12,10 +12,20 @@ import java.net.URI
 private fun RepositoryHandler.maven(url: String, configure: MavenArtifactRepository.() -> Unit = {}): MavenArtifactRepository =
     maven { repository -> repository.setUrl(url); repository.configure() }
 
-private fun Project.property(environment: String, property: String): String? =
+internal fun Project.property(environment: String, property: String): String? =
     System.getenv(environment) ?: findProperty(property) as? String
 
-/** `kotlinx("coroutines-core")` is `org.jetbrains.kotlinx:kotlinx-coroutines-core:+`. */
+/** The groups of the Xali libraries, plugins and catalog: what the Xali and local Maven repositories are asked for. */
+internal val XALI_GROUPS = listOf("com.xalitoria", "net.xalitoria", "mc.xalitoria")
+
+/** Built from source and installed in the local Maven repository: no public repository has it, see the catalog. */
+internal val LOCAL_GROUPS = listOf("com.discordsrv")
+
+/**
+ * `kotlinx("coroutines-core")` is `org.jetbrains.kotlinx:kotlinx-coroutines-core:+`: whatever is newest the day it is
+ * built, so the build changes without a commit and the catalog's pin is not what it gets.
+ */
+@Deprecated("Declare the library from the catalog: libs.kotlinx.coroutines, libs.kotlinx.serialization.core, ...")
 fun DependencyHandler.kotlinx(module: String, version: String? = "+"): Any =
     "org.jetbrains.kotlinx:kotlinx-" + module + (version?.let { ":$it" } ?: ":+")
 
@@ -28,13 +38,27 @@ fun RepositoryHandler.reposilite(project: Project, url: String) =
         }
     }
 
+// Every repository below is asked only for what it serves (`mavenContent`). Gradle asks the repositories in order for each
+// module and stops at the first that has it, so a repository without a filter is asked for every library of every module
+// that comes after it, and answers for a name it should never be trusted with (a dependency-confusion door). Central and
+// PaperMC (which proxies Central and holds the Mojang libraries) are the two that serve anything.
+
 fun RepositoryHandler.mavenXalitoria() {
-    maven("https://maven.xali.host/releases") { name = "xalitoria-releases" }
-    maven("https://maven.xali.host/snapshots") { name = "xalitoria-snapshots" }
+    maven("https://maven.xali.host/releases") {
+        name = "xalitoria-releases"
+        mavenContent { it.releasesOnly(); XALI_GROUPS.forEach(it::includeGroupAndSubgroups) }
+    }
+    maven("https://maven.xali.host/snapshots") {
+        name = "xalitoria-snapshots"
+        mavenContent { it.snapshotsOnly(); XALI_GROUPS.forEach(it::includeGroupAndSubgroups) }
+    }
 }
 
 fun RepositoryHandler.mavenSonatype() =
-    maven("https://oss.sonatype.org/content/repositories/snapshots") { name = "sonatype" }
+    maven("https://oss.sonatype.org/content/repositories/snapshots") {
+        name = "sonatype"
+        mavenContent { it.snapshotsOnly() }
+    }
 
 fun RepositoryHandler.mavenSpigotMC() =
     maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") { name = "spigotmc" }
@@ -44,14 +68,24 @@ fun RepositoryHandler.mavenPaperMC() {
     maven("https://repo.papermc.io/repository/maven-public") { name = "papermc-public" }
 }
 
+/** JitPack builds GitHub repositories as `com.github.<owner>`; NuVotifier's builds all fail there, see [githubNuVotifier]. */
 fun RepositoryHandler.mavenJitpack() =
-    maven("https://jitpack.io") { name = "Jitpack" }
+    maven("https://jitpack.io") {
+        name = "Jitpack"
+        mavenContent { it.includeGroupByRegex("""com\.github\.(?!NuVotifier\b).*""") }
+    }
 
 fun RepositoryHandler.mavenCodeMCPublic() =
-    maven("https://repo.codemc.io/repository/maven-public/") { name = "CodeMC-public" }
+    maven("https://repo.codemc.io/repository/maven-public/") {
+        name = "CodeMC-public"
+        mavenContent { it.includeGroupAndSubgroups("de.tr7zw"); it.includeGroupAndSubgroups("net.skinsrestorer") }
+    }
 
 fun RepositoryHandler.mavenCodeMC() =
-    maven("https://repo.codemc.io/repository/creatorfromhell/") { name = "CodeMC-creatorfromhell" }
+    maven("https://repo.codemc.io/repository/creatorfromhell/") {
+        name = "CodeMC-creatorfromhell"
+        mavenContent { it.includeGroupAndSubgroups("net.milkbowl.vault") }
+    }
 
 /**
  * NuVotifier is not on any Maven repository (its Jitpack builds all fail), only attached to its GitHub releases as one
@@ -66,9 +100,22 @@ fun RepositoryHandler.githubNuVotifier() =
         repository.content { it.includeGroup("com.github.NuVotifier.NuVotifier") }
     }
 
+/** ProtocolLib's releases and its development builds (`5.5.0-SNAPSHOT`). */
+fun RepositoryHandler.mavenDmulloy2() =
+    maven("https://repo.dmulloy2.net/repository/public/") {
+        name = "dmulloy2"
+        mavenContent { it.includeGroupAndSubgroups("net.dmulloy2"); it.includeGroupAndSubgroups("com.comphenix.protocol") }
+    }
+
 fun RepositoryHandler.mavenHelpChat() {
-    maven("https://repo.extendedclip.com/snapshots") { name = "HelpChat-snapshots" }
-    maven("https://repo.extendedclip.com/releases") { name = "HelpChat-releases" }
+    maven("https://repo.extendedclip.com/snapshots") {
+        name = "HelpChat-snapshots"
+        mavenContent { it.snapshotsOnly(); it.includeGroupAndSubgroups("me.clip") }
+    }
+    maven("https://repo.extendedclip.com/releases") {
+        name = "HelpChat-releases"
+        mavenContent { it.releasesOnly(); it.includeGroupAndSubgroups("me.clip") }
+    }
 }
 
 fun RepositoryHandler.mavenNexo() =

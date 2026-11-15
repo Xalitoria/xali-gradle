@@ -1,0 +1,34 @@
+# Raises the pins of libs.versions.toml, one pull request per family of libraries that has to move together. Dependabot reads
+# the repositories of this build (Maven Central, the plugin portal and PaperMC), so a library that only another repository
+# serves (JitPack, CodeMC, HelpChat) is raised by hand. Not raised on purpose: the Xali libraries (raise a pin only after the
+# release is on maven.xali.host, see the root README), `minecraft` and `folia` (the stable Paper line, see README.md) and
+# `kotlin` (kotlin.version of every repository has to change with it, `scripts/xali verify` checks).
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "com.xalitoria:*"
+      - dependency-name: "net.xalitoria.*"
+      - dependency-name: "io.papermc.paper:paper-api"
+      - dependency-name: "dev.folia:folia-api"
+      - dependency-name: "org.jetbrains.kotlin*"
+    groups:
+      kotlinx:
+        patterns: ["org.jetbrains.kotlinx:*"]
+      exposed:
+        patterns: ["org.jetbrains.exposed:*"]
+      ktor:
+        patterns: ["io.ktor:*"]
+      adventure:
+        patterns: ["net.kyori:*"]
+      jackson:
+        patterns: ["com.fasterxml.jackson*"]
+      database:
+        patterns: ["com.zaxxer:*", "org.mariadb.jdbc:*", "com.mysql:*", "org.xerial:*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

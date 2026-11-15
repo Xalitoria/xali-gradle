@@ -7,13 +7,19 @@ import mc.xalitoria.gradle.repo.mavenJitpack
 import mc.xalitoria.gradle.repo.mavenPaperMC
 import mc.xalitoria.gradle.repo.mavenSonatype
 import mc.xalitoria.gradle.repo.mavenXalitoria
+import mc.xalitoria.gradle.repo.LOCAL_GROUPS
+import mc.xalitoria.gradle.repo.XALI_GROUPS
+import mc.xalitoria.gradle.repo.mavenDmulloy2
 import mc.xalitoria.gradle.repo.githubNuVotifier
+import mc.xalitoria.gradle.repo.property
 import org.gradle.api.GradleException
 import org.gradle.api.JavaVersion
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.file.DuplicatesStrategy
+import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
+import org.gradle.api.tasks.bundling.AbstractArchiveTask
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
@@ -50,7 +56,12 @@ class Conventions : Plugin<Project> {
         project.extensions.extraProperties[APPLIED] = true
 
         project.repositories.apply {
-            mavenLocal()
+            // The local Maven repository is whatever is on one machine, so only what has to come from there does: the
+            // Xali libraries of a module built on its own (the workspace builds them from their sources, see the root
+            // build script), and the libraries that no public repository has.
+            mavenLocal { it.content { content ->
+                (if (project.rootProject.isWorkspace()) LOCAL_GROUPS else XALI_GROUPS + LOCAL_GROUPS).forEach(content::includeGroupAndSubgroups)
+            } }
             mavenCentral()
             mavenSonatype()
             mavenCodeMC()
@@ -59,15 +70,40 @@ class Conventions : Plugin<Project> {
             mavenJitpack()
             githubNuVotifier()
             mavenHelpChat()
+            mavenDmulloy2()
             mavenXalitoria()
         }
 
         if (!project.pluginManager.hasPlugin("org.jetbrains.kotlin.multiplatform")) kotlin(project)
 
+        reproducible(project)
+        aggregate(project)
+
         project.afterEvaluate {
             name(project)
             publish(project)
             kotlinVersion(project)
+        }
+    }
+
+    /** The same sources give the same jar, so the build cache is hit across machines and a rebuilt release differs in nothing. */
+    private fun reproducible(project: Project) {
+        project.tasks.withType(AbstractArchiveTask::class.java).configureEach {
+            it.isPreserveFileTimestamps = false
+            it.isReproducibleFileOrder = true
+        }
+    }
+
+    /**
+     * A module that holds others (`chat` with `chat:paper`) has no sources, so its `build`, `check` and `test` do nothing.
+     * Make them run the parts' tasks: `./gradlew :chat:build` builds, and `:chat:test` tests, the whole of chat.
+     */
+    private fun aggregate(project: Project) {
+        if (project.childProjects.isEmpty()) return
+        for (name in listOf("build", "check", "test")) {
+            project.tasks.matching { it.name == name }.configureEach { task ->
+                project.childProjects.values.forEach { task.dependsOn("${it.path}:$name") }
+            }
         }
     }
 
@@ -168,12 +204,44 @@ class Conventions : Plugin<Project> {
         }
     }
 
-    /** A library that applies the Maven publish plugin publishes its main jar, with no classifier, unless it set up its own. */
+    /**
+     * A library that applies the Maven publish plugin publishes its main jar, with no classifier and with its sources, unless
+     * it set up its own, to the `xali` repository: `maven.xali.host/releases`, or `/snapshots` for a `-SNAPSHOT` version.
+     * Credentials come from `MAVEN_USER` and `MAVEN_TOKEN`, or the Gradle properties `maven.user` and `maven.token`.
+     *
+     * The releases repository accepts overwrites, and servers keep what they downloaded, so publishing a version that is
+     * already there is refused (`checkNotPublished`) unless `-Pxali.overwrite=true` says it is meant.
+     */
     private fun publish(project: Project) {
         if (!project.pluginManager.hasPlugin("maven-publish")) return
         project.extensions.configure(PublishingExtension::class.java) { publishing ->
             if (publishing.publications.isEmpty()) {
+                if (project.extensions.findByType(JavaPluginExtension::class.java) != null) {
+                    project.extensions.configure(JavaPluginExtension::class.java) { it.withSourcesJar() }
+                }
                 publishing.publications.create("mavenJava", MavenPublication::class.java) { it.from(project.components.getByName("java")) }
+            }
+            if (publishing.repositories.findByName(REPOSITORY) != null) return@configure
+            val snapshot = project.version.toString().endsWith("-SNAPSHOT")
+            val root = "https://maven.xali.host/" + if (snapshot) "snapshots" else "releases"
+            publishing.repositories.maven { repository ->
+                repository.name = REPOSITORY
+                repository.setUrl(root)
+                repository.credentials { credentials ->
+                    credentials.username = project.property("MAVEN_USER", "maven.user")
+                    credentials.password = project.property("MAVEN_TOKEN", "maven.token")
+                }
+            }
+            if (snapshot) return@configure
+            val check = project.tasks.register("checkNotPublished", CheckNotPublished::class.java) { task ->
+                task.group = "publishing"
+                task.description = "Fails when this version is already on $root."
+                task.repository.set(root)
+                task.coordinates.set(project.provider { "${project.group}:${project.name}:${project.version}" })
+                task.overwrite.set(project.providers.gradleProperty("xali.overwrite").map { it.toBoolean() }.orElse(false))
+            }
+            project.tasks.withType(PublishToMavenRepository::class.java).configureEach { task ->
+                if (task.repository.name == REPOSITORY) task.dependsOn(check)
             }
         }
     }
@@ -199,6 +267,7 @@ class Conventions : Plugin<Project> {
         const val APPLIED = "xali.conventions.applied"
         const val CHECKED = "xali.conventions.checked"
         const val PREFIX = "xali"
+        const val REPOSITORY = "xali"
         val PLATFORMS = Kind.entries.map { it.dir }.toSet()
     }
 }

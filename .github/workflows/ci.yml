@@ -1,0 +1,21 @@
+# Builds and tests this repository inside the workspace (see Xalitoria/xali-craft): the other repositories are checked out
+# next to it, so a change is built against the sources of the libraries it uses. The steps are in that repository.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: Xalitoria/xali-craft/.github/workflows/module.yml@main
+    secrets: inherit
