@@ -14,7 +14,8 @@ updates:
       - dependency-name: "net.xalitoria.*"
       - dependency-name: "io.papermc.paper:paper-api"
       - dependency-name: "dev.folia:folia-api"
-      - dependency-name: "org.jetbrains.kotlin*"
+      - dependency-name: "org.jetbrains.kotlin:*"
+      - dependency-name: "org.jetbrains.kotlin.*"
     groups:
       kotlinx:
         patterns: ["org.jetbrains.kotlinx:*"]

@@ -90,7 +90,8 @@ It sets up:
 - the [jar names](#jar-names), and a check that no two jars of one build get the same file name;
 - reproducible archives (no timestamps, a fixed file order), so the same sources give the same jar and the build cache is hit
   across machines;
-- `build`, `check` and `test` of a module that holds parts (`chat`) that run the parts' tasks, so `./gradlew :chat:build` builds all of chat;
+- `build`, `check` and `test` of a module that holds parts (`chat`) that run the parts' tasks, so `./gradlew :chat:build` builds all of chat
+  (a Kotlin Multiplatform part is tested through `allTests`, and a part without the task is skipped);
 - [publishing](#publishing) for a project that applies `maven-publish`;
 - a check that `kotlin.version` in `gradle.properties` equals `kotlin` in the catalog.
 
@@ -383,21 +384,26 @@ other on a classpath. The `subprojects { group = ... }` block of each plugin nam
 
 ## Development
 
-The plugin is Kotlin in `kotlin/mc/xalitoria/gradle` and two Java loaders in `java/mc/xalitoria/gradle/loader`; it has no
-tests of its own. Check a change by building a module that uses it (`./gradlew :chat:paper:shadowJar`, then unzip the jar
-and read `paper-plugin.yml` and `loader.json`) and with a dev server (`runServer`).
+The plugin is Kotlin in `kotlin/mc/xalitoria/gradle` and two Java loaders in `java/mc/xalitoria/gradle/loader`. Its tests are in
+`test/` (`./gradlew -p xali-gradle test` from the workspace root); they only cover the pure rules. Check the rest of a change by
+building a module that uses it (`./gradlew :chat:paper:shadowJar`, then unzip the jar and read `paper-plugin.yml` and
+`loader.json`) and with a dev server (`runServer`).
+
+| Test | What it pins |
+|---|---|
+| `RepositoryProbeTest` | Which repositories `loader.json` lists: the first that has a module, none that Gradle's content filter would not ask, one that did not answer 404 or 410 kept, and what each repository helper serves. |
 
 | File | Role |
 |---|---|
 | `libs.versions.toml` | The version catalog: every dependency and plugin version. Published as `xali-catalog`. |
 | `Conventions.kt` | The conventions plugin, the jar names and the `sibling` helper. |
-| `Repositories.kt` | The repository helpers (`mavenXalitoria()`, `reposilite(project, url)` and the rest) that build scripts import from `mc.xalitoria.gradle.repo`, each with the groups it serves. |
+| `Repositories.kt` | The repository helpers (`mavenXalitoria()`, `reposilite(project, url)` and the rest) that build scripts import from `mc.xalitoria.gradle.repo`, each with the groups it serves (`Serves`, which the loader's repository list reads back). |
 | `xali-gradle/kotlin/.../MinecraftPlugin.kt` | The plugin: registers the blocks and wires the tasks. |
 | `Extensions.kt` | The DSL: `paper { }`, `velocity { }`, dependencies and loader options. |
 | `Bundles.kt` | Which projects form a plugin and where their sources, resources and `api` dependencies are (a plain JVM project, or a multiplatform one). |
 | `Descriptors.kt` | The text of `paper-plugin.yml` and `velocity-plugin.json`. |
 | `Libraries.kt` | Resolving the `api(...)` libraries, with checksums and exclusions. |
-| `RepositoryProbe.kt` | Which repositories serve a library: an HTTP `HEAD` of each module's pom, first repository in order wins. Fills `repositories` of `loader.json`. |
+| `RepositoryProbe.kt` | Which repositories serve a library: an HTTP `HEAD` of each module's pom, the first repository in order that Gradle would have asked wins, and one that did not answer with a 404 is kept. Fills `repositories` of `loader.json`. |
 | `Tasks.kt` | Writing files into the jar, renaming the loader classes into the plugin's package (ASM), and `checkNotPublished`. |
 | `Server.kt` | The dev server tasks and the pinned server builds. |
 | `xali-gradle/java/.../loader` | The precompiled `PaperLoader` and `VelocityLoader`. |

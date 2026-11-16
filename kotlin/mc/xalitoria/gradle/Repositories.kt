@@ -6,6 +6,7 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.dsl.DependencyHandler
 import org.gradle.api.artifacts.dsl.RepositoryHandler
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
+import org.gradle.api.plugins.ExtensionAware
 import java.net.URI
 
 /** `maven("https://...") { name = "..." }`, as the Kotlin DSL writes it. */
@@ -38,6 +39,42 @@ fun RepositoryHandler.reposilite(project: Project, url: String) =
         }
     }
 
+/**
+ * What a repository is asked for. Gradle applies it (`mavenContent`) but a build cannot read it back, so each repository of
+ * this file records it too, and the loader's list of repositories (see `usedRepositories`) leaves out a repository for a
+ * library that Gradle would not have asked it for. [groups] include their subgroups, [regex] has to match the whole group,
+ * and a repository that names neither serves every group.
+ */
+internal class Serves(
+    val groups: List<String> = emptyList(),
+    val regex: String? = null,
+    val releases: Boolean = true,
+    val snapshots: Boolean = true,
+) {
+    fun accepts(group: String, version: String): Boolean {
+        if (version.endsWith("-SNAPSHOT")) { if (!snapshots) return false } else if (!releases) return false
+        if (groups.isEmpty() && regex == null) return true
+        return groups.any { group == it || group.startsWith("$it.") } || (regex != null && Regex(regex).matches(group))
+    }
+}
+
+private const val SERVES = "xali.serves"
+
+/** The [Serves] that [declare]d this repository, or `null` for one that is not from this file and serves everything. */
+internal fun MavenArtifactRepository.serves(): Serves? =
+    (this as? ExtensionAware)?.extensions?.extraProperties?.takeIf { it.has(SERVES) }?.get(SERVES) as? Serves
+
+/** Restricts the repository to [content], for Gradle and for the loader's list. */
+private fun MavenArtifactRepository.declare(content: Serves) {
+    (this as ExtensionAware).extensions.extraProperties.set(SERVES, content)
+    mavenContent { descriptor ->
+        if (!content.releases) descriptor.snapshotsOnly()
+        if (!content.snapshots) descriptor.releasesOnly()
+        content.groups.forEach(descriptor::includeGroupAndSubgroups)
+        content.regex?.let(descriptor::includeGroupByRegex)
+    }
+}
+
 // Every repository below is asked only for what it serves (`mavenContent`). Gradle asks the repositories in order for each
 // module and stops at the first that has it, so a repository without a filter is asked for every library of every module
 // that comes after it, and answers for a name it should never be trusted with (a dependency-confusion door). Central and
@@ -46,18 +83,18 @@ fun RepositoryHandler.reposilite(project: Project, url: String) =
 fun RepositoryHandler.mavenXalitoria() {
     maven("https://maven.xali.host/releases") {
         name = "xalitoria-releases"
-        mavenContent { it.releasesOnly(); XALI_GROUPS.forEach(it::includeGroupAndSubgroups) }
+        declare(Serves(XALI_GROUPS, snapshots = false))
     }
     maven("https://maven.xali.host/snapshots") {
         name = "xalitoria-snapshots"
-        mavenContent { it.snapshotsOnly(); XALI_GROUPS.forEach(it::includeGroupAndSubgroups) }
+        declare(Serves(XALI_GROUPS, releases = false))
     }
 }
 
 fun RepositoryHandler.mavenSonatype() =
     maven("https://oss.sonatype.org/content/repositories/snapshots") {
         name = "sonatype"
-        mavenContent { it.snapshotsOnly() }
+        declare(Serves(releases = false))
     }
 
 fun RepositoryHandler.mavenSpigotMC() =
@@ -72,19 +109,19 @@ fun RepositoryHandler.mavenPaperMC() {
 fun RepositoryHandler.mavenJitpack() =
     maven("https://jitpack.io") {
         name = "Jitpack"
-        mavenContent { it.includeGroupByRegex("""com\.github\.(?!NuVotifier\b).*""") }
+        declare(Serves(regex = """com\.github\.(?!NuVotifier\b).*"""))
     }
 
 fun RepositoryHandler.mavenCodeMCPublic() =
     maven("https://repo.codemc.io/repository/maven-public/") {
         name = "CodeMC-public"
-        mavenContent { it.includeGroupAndSubgroups("de.tr7zw"); it.includeGroupAndSubgroups("net.skinsrestorer") }
+        declare(Serves(listOf("de.tr7zw", "net.skinsrestorer")))
     }
 
 fun RepositoryHandler.mavenCodeMC() =
     maven("https://repo.codemc.io/repository/creatorfromhell/") {
         name = "CodeMC-creatorfromhell"
-        mavenContent { it.includeGroupAndSubgroups("net.milkbowl.vault") }
+        declare(Serves(listOf("net.milkbowl.vault")))
     }
 
 /**
@@ -104,17 +141,17 @@ fun RepositoryHandler.githubNuVotifier() =
 fun RepositoryHandler.mavenDmulloy2() =
     maven("https://repo.dmulloy2.net/repository/public/") {
         name = "dmulloy2"
-        mavenContent { it.includeGroupAndSubgroups("net.dmulloy2"); it.includeGroupAndSubgroups("com.comphenix.protocol") }
+        declare(Serves(listOf("net.dmulloy2", "com.comphenix.protocol")))
     }
 
 fun RepositoryHandler.mavenHelpChat() {
     maven("https://repo.extendedclip.com/snapshots") {
         name = "HelpChat-snapshots"
-        mavenContent { it.snapshotsOnly(); it.includeGroupAndSubgroups("me.clip") }
+        declare(Serves(listOf("me.clip"), releases = false))
     }
     maven("https://repo.extendedclip.com/releases") {
         name = "HelpChat-releases"
-        mavenContent { it.releasesOnly(); it.includeGroupAndSubgroups("me.clip") }
+        declare(Serves(listOf("me.clip"), snapshots = false))
     }
 }
 

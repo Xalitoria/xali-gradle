@@ -1,5 +1,7 @@
 package mc.xalitoria.gradle
 
+import mc.xalitoria.gradle.repo.Serves
+import mc.xalitoria.gradle.repo.serves
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ExternalModuleDependency
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
@@ -65,7 +67,11 @@ internal fun libraries(bundle: Bundle): Libraries? {
         }.distinct().sorted()
     }
     return Libraries(
-        repositories = resolved.map { usedRepositories(declaredRepositories, it) },
+        repositories = resolved.map { coordinates ->
+            usedRepositories(declaredRepositories.urls, coordinates, serves = { repository, group, version ->
+                declaredRepositories.serves[repository]?.accepts(group, version) ?: true
+            })
+        },
         direct = configuration.incoming.resolutionResult.rootComponent.map { root ->
             root.dependencies.asSequence().filterIsInstance<ResolvedDependencyResult>()
                 .mapNotNull { it.selected.moduleVersion }
@@ -85,9 +91,10 @@ internal fun libraries(bundle: Bundle): Libraries? {
  * order and without repeats. Local ones are no use to a server, and Central is swapped for a mirror if asked. Only the
  * ones that serve a library of the loader are written, see [usedRepositories].
  */
-private fun repositories(project: Project, centralProxy: Boolean): Map<String, String> {
+private fun repositories(project: Project, centralProxy: Boolean): DeclaredRepositories {
     val owners = generateSequence(project) { it.parent }.toList() + project.allprojects
     val result = linkedMapOf<String, String>()
+    val serves = linkedMapOf<String, Serves>()
     owners.flatMap { it.repositories.filterIsInstance<MavenArtifactRepository>() }.forEach { repository ->
         var url = repository.url.toString()
         if (!url.startsWith("http")) return@forEach
@@ -96,9 +103,13 @@ private fun repositories(project: Project, centralProxy: Boolean): Map<String, S
             var name = repository.name
             while (name in result) name += "_"
             result[name] = url
+            repository.serves()?.let { serves[name] = it }
         }
     }
-    return result
+    return DeclaredRepositories(result, serves)
 }
+
+/** The web addresses of the repositories by name, and for those that restrict what they serve, what that is. */
+private class DeclaredRepositories(val urls: Map<String, String>, val serves: Map<String, Serves>)
 
 private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }

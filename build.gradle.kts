@@ -19,6 +19,12 @@ dependencies {
     // The loaders are plain Java compiled here and copied into plugins; they only need the platform APIs to compile.
     compileOnly(libs.paper.api)
     compileOnly(libs.velocity.api)
+
+    testImplementation(kotlin("test"))
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 kotlin {
@@ -26,6 +32,9 @@ kotlin {
     sourceSets.main {
         kotlin.srcDirs("kotlin")
         resources.srcDirs("resources")
+    }
+    sourceSets.test {
+        kotlin.srcDirs("test")
     }
 }
 

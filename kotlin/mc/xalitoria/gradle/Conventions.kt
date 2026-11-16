@@ -16,6 +16,7 @@ import org.gradle.api.GradleException
 import org.gradle.api.JavaVersion
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.Task
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
@@ -28,6 +29,7 @@ import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.concurrent.Callable
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 
 /**
@@ -96,16 +98,21 @@ class Conventions : Plugin<Project> {
 
     /**
      * A module that holds others (`chat` with `chat:paper`) has no sources, so its `build`, `check` and `test` do nothing.
-     * Make them run the parts' tasks: `./gradlew :chat:build` builds, and `:chat:test` tests, the whole of chat.
+     * Make them run the parts' tasks: `./gradlew :chat:build` builds, and `:chat:test` tests, the whole of chat. A part
+     * that has no such task is left out, and a Kotlin Multiplatform part, which has `allTests` where a JVM one has `test`, is tested through that.
      */
     private fun aggregate(project: Project) {
         if (project.childProjects.isEmpty()) return
         for (name in listOf("build", "check", "test")) {
             project.tasks.matching { it.name == name }.configureEach { task ->
-                project.childProjects.values.forEach { task.dependsOn("${it.path}:$name") }
+                // Asked when the task graph is built, after every part has applied its plugins.
+                task.dependsOn(Callable { project.childProjects.values.mapNotNull { lifecycleTask(it, name) } })
             }
         }
     }
+
+    private fun lifecycleTask(child: Project, name: String): Task? =
+        child.tasks.findByName(name) ?: if (name == "test") child.tasks.findByName("allTests") else null
 
     /**
      * Every repository names the Kotlin plugin version in `kotlin.version` of its `gradle.properties` (settings cannot read
