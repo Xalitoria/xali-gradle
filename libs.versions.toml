@@ -31,6 +31,8 @@ asm-commons = { module = "org.ow2.asm:asm-commons", version = "9.11.1" }
 kotlinx-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "serialization" }
+# Estimates how guessable a password is (dictionaries, keyboard patterns, dates, leet); the staff tools use it to refuse an easy one.
+zxcvbn = { module = "com.nulab-inc:zxcvbn", version = "1.9.0" }
 kotlinx-serialization-cbor = { module = "org.jetbrains.kotlinx:kotlinx-serialization-cbor", version.ref = "serialization" }
 # What util 0.5.0 was published with: it was the newest build when its dependencies were `+`.
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version = "0.8.0-0.6.x-compat" }
