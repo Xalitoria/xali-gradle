@@ -115,7 +115,7 @@ fun RepositoryHandler.mavenJitpack() =
 fun RepositoryHandler.mavenCodeMCPublic() =
     maven("https://repo.codemc.io/repository/maven-public/") {
         name = "CodeMC-public"
-        declare(Serves(listOf("de.tr7zw", "net.skinsrestorer")))
+        declare(Serves(listOf("de.tr7zw", "net.skinsrestorer", "com.github.retrooper", "me.filoghost.holographicdisplays")))
     }
 
 fun RepositoryHandler.mavenCodeMC() =

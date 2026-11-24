@@ -62,6 +62,11 @@ nuvotifier-universal = { module = "com.github.NuVotifier.NuVotifier:nuvotifier-u
 nuvotifier-velocity = { module = "com.github.NuVotifier.NuVotifier:nuvotifier-velocity", version.ref = "nuvotifier" }
 # A development build on repo.dmulloy2.net (the newest release is 5.4.0).
 protocollib = { module = "net.dmulloy2:ProtocolLib", version = "5.5.0-SNAPSHOT" }
+# Hologram plugins and the packet libraries XaliCrates draws holograms with; all are on the server, never shaded.
+decentholograms = { module = "com.github.decentsoftware-eu:decentholograms", version = "2.10.2" }
+cmi-api = { module = "com.github.Zrips:CMI-API", version = "9.8.6.4" }
+holographicdisplays-api = { module = "me.filoghost.holographicdisplays:holographicdisplays-api", version = "3.0.5" }
+packetevents = { module = "com.github.retrooper:packetevents-spigot", version = "2.14.0" }
 plan = { module = "com.github.plan-player-analytics:Plan", version = "5.9.3786" }
 placeholderapi = { module = "me.clip:placeholderapi", version = "2.12.3" }
 vanish-api = { module = "com.github.LeonMangler:SuperVanish", version = "6.2.18-3" }

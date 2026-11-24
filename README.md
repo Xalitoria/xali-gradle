@@ -107,7 +107,7 @@ Build scripts that refer to another part of the same module use `sibling("common
 Gradle asks the repositories in order for each module and uses the first that has it. A repository with no filter is asked for every
 library of every module and answers for any name, which costs time and lets whoever runs it shadow a library. So each repository
 declares what it serves (`mavenContent`): the Xali ones their groups, JitPack `com.github.*` except NuVotifier, HelpChat `me.clip`,
-dmulloy2 ProtocolLib, CodeMC two groups. Central and PaperMC serve anything. Sonatype's and HelpChat's snapshot repositories only
+dmulloy2 ProtocolLib, CodeMC four groups (NBT-API, SkinsRestorer, PacketEvents, HolographicDisplays). Central and PaperMC serve anything. Sonatype's and HelpChat's snapshot repositories only
 serve snapshots.
 
 The local Maven repository is on one machine only, so it serves just `com.discordsrv`, which no public repository has (see the
