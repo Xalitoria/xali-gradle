@@ -84,6 +84,7 @@ xalicraft-util = { module = "com.xalitoria:util", version = "0.6.0" }
 xali-chat-api = { module = "net.xalitoria.chat:api", version = "1.2.0" }
 xali-menu-api = { module = "net.xalitoria.menu:api", version = "0.3.0" }
 xali-playtime-api = { module = "net.xalitoria.playtime:api", version = "0.1.0" }
+xali-redeem-api = { module = "net.xalitoria.redeem:api", version = "0.5.0" }
 xali-staff-api = { module = "net.xalitoria.staff:api", version = "0.2.0" }
 
 exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
